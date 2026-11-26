@@ -4,6 +4,7 @@ from src.controllers.dependencies import Actor, Admin, Db, Writer
 from src.controllers.report import report_csv, report_detail
 from src.schemas.reviews import ReviewCreate, ReviewInfo
 from src.schemas.runs import RunCreate, RunInfo
+from src.services import recommendations as advice_service
 from src.services import reviews, runs
 
 router = APIRouter(prefix='/runs')
@@ -22,6 +23,26 @@ def create(payload: RunCreate, session: Db, actor: Writer):
 @router.get('/{run_id}')
 def detail(run_id: int, session: Db, actor: Actor):
     return report_detail(session, run_id, actor)
+
+
+@router.get('/{run_id}/recommendations')
+def recommendations(run_id: int, session: Db, actor: Actor):
+    return advice_service.list_for_run(session, run_id, actor)
+
+
+@router.post('/{run_id}/recommendations')
+def generate_recommendations(run_id: int, session: Db, actor: Writer):
+    return advice_service.generate_for_run(session, run_id, actor)
+
+
+@router.get('/{run_id}/suggestions')
+def suggestions(run_id: int, session: Db, actor: Actor):
+    return advice_service.list_for_run(session, run_id, actor)
+
+
+@router.post('/{run_id}/suggestions')
+def generate_suggestions(run_id: int, session: Db, actor: Writer):
+    return advice_service.generate_for_run(session, run_id, actor)
 
 
 @router.post('/{run_id}/review', response_model=ReviewInfo, status_code=201)

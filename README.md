@@ -26,9 +26,12 @@ curl -fsS http://127.0.0.1:19438/api/spec
 3. `POST /api/runs` 提交 `{"label":"周五复测单","dataset_id":1,"settings":{"nu":0.12,"reference_quantile":0.92}}`。
 4. `GET /api/runs/{id}` 检查优先复测、系列待查及记录区间。`POST /api/runs/{id}/review` 提交 `{"decision":"approved","note":"已确认同批复测安排"}`。
 5. 从 `/api/runs/{id}/export/badge_retest` 下载扣件、原始读数、复测口径及最近历史参照件。`series_calibration` 和 `calibration_parts` 可单独导出。
+6. 筛查单完成后，Writer 可调用 `POST /api/runs/{id}/recommendations` 另算“先量哪几项”。建议沿用该运行冻结的台账、参数和复测线，每件只借同版型一件参照件；结果按 `(run_id, part_id)` 唯一入单，续算只补未完成扣件，并发重试不产生重复扣件单。`GET` 同路径查询，复核通过后可导出 `retest_advice`。
 
 ## 模型与适用范围
 
 整批区分参考、校准和待检。每个版型至少需要 12 条不同的参考测次。用参考件标准化四个读数并拟合 RBF 一类 SVM，新颖度取模型判别函数的相反数。数值越高，测件越偏离学习到的正常边界。最近参考件只用于追溯人工复测。各系列使用至少 10 条独立校准件，以 `higher` 规则取校准分位作为阈值。分数严格越线的待检件列为优先复测。未知夹体版型、参照或校准量不足时进入人工核查。参照数据、分位配置和版型覆盖共同决定结果。
+
+测项建议枚举同版型参照件与测项子集：先最小化替换测项数，再以 `StandardScaler.scale_` 归一化后的绝对改动总和最小化；替换后分数小于或等于当次阈值才算回到线内。找不到同版型参照或无可行换法时会在建议的 `note` 中注明。
 
 业务算法、数据约束和报表在 `backend/src/domain`。`reference`、`calibration` 和 `pending` 在 `settings.py` 定义，并由 `records.py` 校验。`Role`、`RunStatus` 和 `Decision` 位于 `backend/src/constants/workflow.py`，供权限与运行签核流程共用。环境变量样例位于 `.env.example`。第三方依赖采用各自的许可证。

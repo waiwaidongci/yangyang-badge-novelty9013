@@ -64,6 +64,13 @@ def export_table(session, run_id, key, actor):
     run, review = get_run(session, run_id, actor)
     if review is None or review.decision != Decision.APPROVED:
         raise HTTPException(409, '复核通过后可下载正式 CSV')
+    if key in {'retest_advice', 'recommendations', 'suggestions', 'measurement_advice'}:
+        from src.services.recommendations import advice_export
+
+        table = advice_export(session, run_id)
+        if not table['rows']:
+            raise LookupError('找不到已算完的测项建议')
+        return table
     for table in run.result['tables']:
         if table['key'] == key:
             return table
